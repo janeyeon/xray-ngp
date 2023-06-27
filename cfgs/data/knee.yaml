@@ -1,0 +1,13 @@
+name: knee
+aabb:
+    _target_: torchngp.io.aabb_from_json
+    path: data/knee/transforms.json
+cameras:
+    train_camera:
+        _target_: torchngp.io.cam_from_json
+        path: data/knee/transforms.json
+        slice: ":-3"
+    val_camera:
+        _target_: torchngp.io.cam_from_json
+        path: data/knee/transforms.json
+        slice: "-3:"

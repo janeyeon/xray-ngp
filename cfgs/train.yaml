@@ -1,0 +1,10 @@
+data: ???
+volume: ???
+renderer: ???
+trainer: ???
+
+defaults:
+    - volume: standard
+    - renderer: standard
+    - trainer: standard
+    - _self_
