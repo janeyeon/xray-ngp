@@ -292,14 +292,13 @@ class NeRFTrainer:
             cam: modules.MultiViewCamera, uv: torch.Tensor, density: torch.Tensor
         ): 
             B, N, M, C = density.shape # C = 4
-            maps = {"density"}
+            maps = {"density", "alpha"}
 
             with torch.cuda.amp.autocast(enabled=scaler.is_enabled()):
                 uv = uv.permute(1, 0, 2, 3).reshape(N, B * M, 2)
                 density = density.permute(1, 0, 2, 3).reshape(N, B * M, C)
                 # print(f"density: {density[..., 0] == density[..., 1]}")
-                density = density[..., 0]
-                alpha = torch.empty_like(density).uniform_(0.0, 1.0)
+                density, alpha = density[..., 0], density[...,  -1]
                 noise = torch.empty_like(density).uniform_(0.0, 1.0)
                 # Dynamic noise background with alpha composition
                 # Encourages the model to learn zero density in empty regions
@@ -311,11 +310,10 @@ class NeRFTrainer:
                 pred_maps = self.train_renderer.trace_uv(
                     self.volume, cam, uv, tsampler=None, which_maps=maps
                 )
-                pred_density = pred_maps["density"].squeeze()
-                # print(f"pred_density: {pred_density[0]}")
+                pred_density, pred_alpha = pred_maps["density"].squeeze(), pred_maps["alpha"].squeeze()
 
                 # Mix
-                pred_density_mixed = pred_density * alpha + noise * (1 - alpha)
+                pred_density_mixed = pred_density * pred_alpha + noise * (1 - pred_alpha)
 
                 # Loss normalized by number of accumulation
                 # steps before update
