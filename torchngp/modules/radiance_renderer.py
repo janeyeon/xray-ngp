@@ -49,16 +49,18 @@ class RadianceRenderer(torch.nn.Module):
         # if ray_td is None:
         #     ray_td = torch.norm(self.aabb[1] - self.aabb[0]) / 1024
         if which_maps is None:
-            which_maps = {"color", "alpha"}
+            which_maps = {"density"}
         tsampler = tsampler or self.tsampler
 
         # Output alloc
         bshape = uv.shape[:-1]
         result = defaultdict(None)
-        if "color" in which_maps:
-            result["color"] = uv.new_zeros(bshape + (vol.radiance_field.n_color_dims,))
-        if "alpha" in which_maps:
-            result["alpha"] = uv.new_zeros(bshape + (1,))
+        # if "color" in which_maps:
+        #     result["color"] = uv.new_zeros(bshape + (vol.radiance_field.n_color_dims,))
+        # if "alpha" in which_maps:
+        #     result["alpha"] = uv.new_zeros(bshape + (1,))
+        if "density" in which_maps:
+            result["density"] = uv.new_zeros(bshape + (1,))
         if "depth" in which_maps:
             result["depth"] = uv.new_zeros(bshape + (1,))
 
@@ -77,7 +79,7 @@ class RadianceRenderer(torch.nn.Module):
         xyz = active_rays(ts)
 
         # Query radiance field at sample locations
-        if "color" in which_maps:
+        if "density" in which_maps:
             ynm = active_rays.encode_raydir()
             # ynm (N,...,16) -> (T,N,...,16)
 
@@ -104,10 +106,12 @@ class RadianceRenderer(torch.nn.Module):
         )
 
         # Compute result maps
-        if "color" in which_maps:
-            result["color"][active_mask] = functional.color_map(ts_color, ts_weights)
-        if "alpha" in which_maps:
-            result["alpha"][active_mask] = functional.alpha_map(ts_weights)
+        # if "color" in which_maps:
+        #     result["color"][active_mask] = functional.color_map(ts_color, ts_weights)
+        # if "alpha" in which_maps:
+        #     result["alpha"][active_mask] = functional.alpha_map(ts_weights)
+        if "density" in which_maps: 
+            result["density"][active_mask] = functional.density_map(ts, ts_weights)
         if "depth" in which_maps:
             result["depth"][active_mask] = functional.depth_map(ts, ts_weights)
 

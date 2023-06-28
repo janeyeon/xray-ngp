@@ -72,12 +72,12 @@ class Volume(torch.nn.Module):
         out_density[mask] = density.to(density.dtype)
 
         # Compute optional colors
-        if return_color:
-            color = self.radiance_field.decode_color(f, cond=ynm[mask])
-            out_color[mask] = color.to(out_color.dtype)
-            return out_density, out_color
-        else:
-            return out_density, None
+        # if return_color:
+        #     color = self.radiance_field.decode_color(f, cond=ynm[mask])
+        #     out_color[mask] = color.to(out_color.dtype)
+        #     return out_density, out_color
+        # else:
+        return out_density, None
 
 
 VolumeConf = config.build_conf(

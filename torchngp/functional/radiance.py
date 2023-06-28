@@ -91,6 +91,25 @@ def color_map(
     return color.cumsum(0) if per_timestep else color.sum(0)
 
 
+def density_map(
+    ts_density: torch.Tensor, ts_weights: torch.Tensor, per_timestep: bool = False
+) -> torch.Tensor:
+    """Computes the RGB color map.
+
+    Params:
+        ts_color: (T,N,...,C) color samples
+        ts_weights: (T,N,...,1) integration weights
+        per_timestep: When true, returns the colors
+            as they accumulate over time.
+
+    Returns:
+        color_map: (N,...,C) final colors or (T,N,...,C) when per_timestep
+            is enabled.
+    """
+    density = ts_density * ts_weights
+    return density.cumsum(0) if per_timestep else density.sum(0)
+
+
 def alpha_map(ts_weights: torch.Tensor, per_timestep: bool = False) -> torch.Tensor:
     """Computes the alpha map.
 
@@ -130,4 +149,4 @@ def depth_map(
     return depth.cumsum(0) if per_timestep else depth.sum(0)
 
 
-__all__ = ["integrate_timesteps", "color_map", "depth_map", "alpha_map"]
+__all__ = ["integrate_timesteps", "color_map", "depth_map", "alpha_map", "density_map"]

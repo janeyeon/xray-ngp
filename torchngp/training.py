@@ -289,33 +289,37 @@ class NeRFTrainer:
     def _create_fwd_bwd_closure(self, scaler: torch.cuda.amp.GradScaler):
         # https://pytorch.org/docs/stable/notes/amp_examples.html#gradient-accumulation
         def run_fwd_bwd(
-            cam: modules.MultiViewCamera, uv: torch.Tensor, rgba: torch.Tensor
-        ):
-            B, N, M, C = rgba.shape
-            maps = {"color", "alpha"}
+            cam: modules.MultiViewCamera, uv: torch.Tensor, density: torch.Tensor
+        ): 
+            B, N, M, C = density.shape # C = 4
+            maps = {"density"}
 
             with torch.cuda.amp.autocast(enabled=scaler.is_enabled()):
                 uv = uv.permute(1, 0, 2, 3).reshape(N, B * M, 2)
-                rgba = rgba.permute(1, 0, 2, 3).reshape(N, B * M, C)
-                rgb, alpha = rgba[..., :3], rgba[..., 3:4]
-                noise = torch.empty_like(rgb).uniform_(0.0, 1.0)
+                density = density.permute(1, 0, 2, 3).reshape(N, B * M, C)
+                # print(f"density: {density[..., 0] == density[..., 1]}")
+                density = density[..., 0]
+                alpha = torch.empty_like(density).uniform_(0.0, 1.0)
+                noise = torch.empty_like(density).uniform_(0.0, 1.0)
                 # Dynamic noise background with alpha composition
                 # Encourages the model to learn zero density in empty regions
                 # Dynamic background is also combined with prediced colors, so
                 # model does not have to learn randomness.
-                gt_rgb_mixed = rgb * alpha + noise * (1 - alpha)
+                gt_density_mixed = density * alpha + noise * (1 - alpha)
 
                 # Predict
                 pred_maps = self.train_renderer.trace_uv(
                     self.volume, cam, uv, tsampler=None, which_maps=maps
                 )
-                pred_rgb, pred_alpha = pred_maps["color"], pred_maps["alpha"]
+                pred_density = pred_maps["density"].squeeze()
+                # print(f"pred_density: {pred_density[0]}")
+
                 # Mix
-                pred_rgb_mixed = pred_rgb * pred_alpha + noise * (1 - pred_alpha)
+                pred_density_mixed = pred_density * alpha + noise * (1 - alpha)
 
                 # Loss normalized by number of accumulation
                 # steps before update
-                loss = F.smooth_l1_loss(pred_rgb_mixed, gt_rgb_mixed)
+                loss = F.smooth_l1_loss(pred_density_mixed, gt_density_mixed)
                 loss = loss / self.n_acc_steps
 
             # Scale the loss
