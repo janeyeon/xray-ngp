@@ -79,8 +79,14 @@ def constant_image(
 
 def compose_image_alpha(rgba: torch.Tensor, rgb: torch.Tensor) -> torch.Tensor:
     """Performs alpha composition on inputs"""
-    alpha = rgba[:, 3:4]
-    c = rgba[:, :3] * alpha + (1 - alpha) * rgb
+    # alpha = rgba[:, 3:4]
+    # c = rgba[:, :3] * alpha + (1 - alpha) * rgb
+    # return torch.cat((c, c.new_ones(rgba.shape[0], 1, rgba.shape[2], rgba.shape[3])), 1)
+    
+    # rgba : [60, 2, 512, 512]
+    alpha = rgba[:, 1]
+    c = rgba[:, 0] * alpha + (1 - alpha) * rgb
+    c = c.unsqueeze(dim=1) # [60, 1, 512, 512]
     return torch.cat((c, c.new_ones(rgba.shape[0], 1, rgba.shape[2], rgba.shape[3])), 1)
 
 
@@ -107,12 +113,17 @@ def scale_depth(depth: torch.Tensor, zmin: float, zmax: float) -> torch.Tensor:
     return depth.clip(0, 1)
 
 
-def save_image(rgba: torch.Tensor, outpath: str, individual: bool = False):
+def save_image(rgba: torch.Tensor, outpath: str, individual: bool = False, is_depth: bool = False):
     """Save images."""
-    C = rgba.shape[1]
+    # C = rgba.shape[1]
+    C = 1
+    
     if not individual:
         rgba = create_image_grid(rgba, padding=0)
-    rgba = (rgba * 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
+    if is_depth:
+        rgba = (rgba * 255).to(torch.uint8).permute(0, 2, 3, 1).unsqueeze(-1).cpu().numpy()
+    else:
+        rgba = (rgba * 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
     for idx, img in enumerate(rgba):
         outp = str(outpath).format(idx=idx)
         if C == 1:
@@ -124,35 +135,41 @@ def save_video_and_image(rgba: torch.Tensor, depth: torch.Tensor, outpath: str, 
     
     all_rgbs = []
     all_depth = []
+    
+    
     """Save images."""
-    C = rgba.shape[1]
+    # C = rgba.shape[1]
+    C = 1 
     if not individual:
         rgba = create_image_grid(rgba, padding=0)
         depth = create_image_grid(depth, padding=0)
-    rgba = (rgba * 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
-    depth = (depth * 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy()
+    rgba = (rgba * 255).to(torch.uint8).permute(0, 2, 3, 1).cpu().numpy() #  gba: (1, 128, 384, 3)
+    depth = (depth * 255).to(torch.uint8).permute(0, 2, 3, 1).unsqueeze(-1).cpu().numpy() #  depth:(1, 128, 384, 1) 
+
+    dump_vid = lambda video, name: imageio.mimsave(outp + f"_{name}.mp4", video, fps=25,
+                                                    quality=8, macro_block_size=1)
+    
+    # RGB image 
     for idx, img in enumerate(rgba):
         outp = str(outpath).format(idx=idx)
         if C == 1:
             img = img[..., 0]
         # Image.fromarray(img, mode="RGBA" if C > 1 else "L").save(outp)
         all_rgbs.append(img)
+        
+    all_rgbs = np.stack(all_rgbs, axis=0)
+    dump_vid(all_rgbs, 'rgb')
 
+    # Depth
     for idx, img in enumerate(depth):
         outp = str(outpath).format(idx=idx)
         if C == 1:
             img = img[..., 0]
         # Image.fromarray(img, mode="RGBA" if C > 1 else "L").save(outp)
-        all_depth.append(img)
+        all_depth.append(img.squeeze())
         
     # for videos
-    all_rgbs = np.stack(all_rgbs, axis=0)
     all_depth = np.stack(all_depth, axis=0)
-
-    dump_vid = lambda video, name: imageio.mimsave(outp + f"_{name}.mp4", video, fps=25,
-                                                    quality=8, macro_block_size=1)
-
-    dump_vid(all_rgbs, 'rgb')
     dump_vid(all_depth, 'depth')
 
 def load_image(

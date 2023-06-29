@@ -27,7 +27,10 @@ def peak_signal_noise_ratio(
     """
 
     B, C = x.shape[:2]
-    assert y.shape[:2] == x.shape[:2]
+    y = y[:, :3, ...] # [3, 3, 128, 128]
+
+    print(f"y: {y.shape}, x: {x.shape}")
+    # assert y.shape[:2] == x.shape[:2]
 
     x = x.reshape(B, C, -1).float()
     y = y.reshape(B, C, -1).float()

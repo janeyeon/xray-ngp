@@ -89,7 +89,8 @@ class TrainingsCallback(Protocol):
 
 @dataclasses.dataclass
 class OptimizerParams:
-    lr: float = 1e-2
+    # lr: float = 1e-2
+    lr: float = 1e-4
     betas: tuple[float, float] = (0.9, 0.99)
     eps: float = 1e-15
     decay_encoder: float = 0.0
@@ -97,7 +98,7 @@ class OptimizerParams:
     decay_color: float = 1e-6
     sched_factor: float = 0.75
     sched_patience: int = 20
-    sched_minlr: float = 1e-4
+    sched_minlr: float = 1e-6
 
 
 @dataclasses.dataclass
@@ -256,7 +257,8 @@ class NeRFTrainer:
         self,
     ) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler._LRScheduler]:
         nerf: modules.NeRF = self.volume.radiance_field  # type: ignore
-        opt = torch.optim.AdamW(
+        # opt = torch.optim.AdamW(
+        opt = torch.optim.Adam(
             [
                 {
                     "params": nerf.pos_encoder.parameters(),
@@ -266,23 +268,24 @@ class NeRFTrainer:
                     "params": nerf.density_mlp.parameters(),
                     "weight_decay": self.optimizer.decay_density,
                 },
-                {
-                    "params": nerf.color_mlp.parameters(),
-                    "weight_decay": self.optimizer.decay_color,
-                },
+                # {
+                #     "params": nerf.color_mlp.parameters(),
+                #     "weight_decay": self.optimizer.decay_color,
+                # },
             ],
             betas=self.optimizer.betas,
             eps=self.optimizer.eps,
             lr=self.optimizer.lr,
         )
 
-        sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            opt,
-            mode="min",
-            factor=self.optimizer.sched_factor,
-            patience=self.optimizer.sched_patience,
-            min_lr=self.optimizer.sched_minlr,
-        )
+        # sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     opt,
+        #     mode="min",
+        #     factor=self.optimizer.sched_factor,
+        #     patience=self.optimizer.sched_patience,
+        #     min_lr=self.optimizer.sched_minlr,
+        # )
+        sched = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=opt, T_0=4, T_mult=2)
 
         return opt, sched
 
@@ -360,7 +363,8 @@ class ValidationCallback(IntervalTrainingsCallback):
         self,
         n_rays_interval_log2: int,
         n_rays_parallel_log2: int,
-        min_loss: float = 5e-3,
+        # min_loss: float = 5e-3,
+        min_loss: float = 5e-2,
         with_psnr: bool = True,
     ) -> None:
         super().__init__(n_rays_interval_log2, callback=self)
@@ -391,11 +395,19 @@ class ValidationCallback(IntervalTrainingsCallback):
         depth = functional.scale_depth(
             depth, trainer.val_camera.tnear, trainer.val_camera.tfar
         )
-        functional.save_image(
-            depth,
-            trainer.output_dir / f"img_depth_val_step_{trainer.global_step}.png",
-            individual=False,
-        )
+        # functional.save_video_and_image(
+        #     rgba,
+        #     depth,
+        #     str(trainer.output_dir / f"img_rgba_val_step_{trainer.global_step}"),
+        #     individual=False,
+        # )
+        # NOTE: - next time 
+        # functional.save_image(
+        #     depth,
+        #     trainer.output_dir / f"img_depth_val_step_{trainer.global_step}.png",
+        #     individual=False,
+        #     is_depth=True
+        # )
         log_msg = (
             "Validation pass after"
             f" {trainer.global_step*trainer.n_rays_parallel:,} rays"
@@ -415,7 +427,7 @@ class ValidationCallback(IntervalTrainingsCallback):
 
 class ExportCallback(IntervalTrainingsCallback):
     def __init__(
-        self, n_rays_interval_log2: int, min_loss: float = 5e-3, config: str = None
+        self, n_rays_interval_log2: int, min_loss: float = 5e-2, config: str = None
     ) -> None:
         super().__init__(n_rays_interval_log2, callback=self)
         self.min_loss = min_loss

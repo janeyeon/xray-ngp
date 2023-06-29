@@ -17,7 +17,8 @@ sample_uv_subpixel: true
 preload: false
 optimizer:
     _target_: torchngp.training.OptimizerParams
-    lr: 0.01
+    # lr: 0.01
+    lr: 0.005
     betas:
         - 0.9
         - 0.99
@@ -28,6 +29,7 @@ optimizer:
     sched_factor: 0.75
     sched_patience: 100
     sched_minlr: 5e-4
+    # sched_minlr: 5e-6
 dev: null
 callbacks:
     - _target_: torchngp.training.UpdateSpatialFilterCallback

@@ -107,6 +107,7 @@ def density_map(
             is enabled.
     """
     density = ts_density * ts_weights
+    # density = ts_density 
     return density.cumsum(0) if per_timestep else density.sum(0)
 
 

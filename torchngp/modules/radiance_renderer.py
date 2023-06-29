@@ -139,7 +139,7 @@ class RadianceRenderer(torch.nn.Module):
             maps: dictionary from map name to (N,H,W,C) tensor
         """
         if which_maps is None:
-            which_maps = {"color", "alpha"}
+            which_maps = {"density", "alpha"}
         tsampler = tsampler or self.tsampler
 
         gen = functional.generate_sequential_uv_samples(
@@ -198,11 +198,11 @@ class RadianceRenderer(torch.nn.Module):
                 vol,
                 cam,
                 tsampler=tsampler,
-                which_maps={"color", "alpha", "depth"},
+                which_maps={"density", "alpha", "depth"},
                 n_rays_parallel=n_rays_parallel,
             )
             pred_rgba = torch.cat(
-                (maps["color"], maps["alpha"], maps["depth"]), -1
+                (maps["density"], maps["alpha"], maps["depth"]), -1
             ).permute(0, 3, 1, 2)
         return pred_rgba
 

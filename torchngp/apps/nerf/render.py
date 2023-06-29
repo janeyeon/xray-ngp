@@ -77,8 +77,11 @@ def render_task(cfg: DictConfig):
     rgbad = rnd.trace(
         vol, cam, use_amp=True, n_rays_parallel=2**cfg.n_rays_parallel_log2
     )
-    rgba = rgbad[:, :4]
-    depth = rgbad[:, 4:5]
+    # rgba = rgbad[:, :4]
+    # depth = rgbad[:, 4:5]
+    print(f"rgbad: {rgbad.shape}")
+    rgba = rgbad[:, :2, ...]
+    depth = rgbad[:, 2:3, ...]
     _logger.info(
         f"Min depth {depth.min().item():.3f}, max depth {depth.max().item():.3f}"
     )
@@ -88,7 +91,8 @@ def render_task(cfg: DictConfig):
         depth = functional.scale_depth(depth, cam.tnear, cam.tfar)
 
     if not cfg.rgba_transparent:
-        rgba = functional.compose_image_alpha(rgba, 1.0)
+        # rgba = functional.compose_image_alpha(rgba, 1.0)
+        rgba = functional.compose_image_alpha(rgba, 0.0)
 
     # functional.save_image(
     #     rgba,
